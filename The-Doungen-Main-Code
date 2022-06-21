@@ -1,0 +1,1511 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+
+namespace DFSAMk2
+{
+    class Room
+    {
+        public int line;
+        public Room(int roomLine)
+        {
+            line = roomLine;
+        }
+    }
+
+    class Weapon
+    {
+        public string name;
+        public int dmg;
+        public int value;
+
+        public Weapon(string wName, int wDmg, int wValue)
+        {
+            name = wName;
+            dmg = wDmg;
+            value = wValue;
+        }
+    }
+    class Character
+    {
+        public string name;
+        public int hp;
+        public int maxHp;
+        public int atk;
+        public int statusChance;
+        public int speed;
+        public string statusEffect;
+        public bool isAlive;
+
+        public Character(string cName, int cHp, int cMaxHp, int cAtk, int cSpeed, string cStatusEffect, int cStatusChance)
+        {
+            name = cName;
+            hp = cHp;
+            maxHp = cMaxHp;
+            atk = cAtk;
+            speed = cSpeed;
+            statusEffect = cStatusEffect;
+            statusChance = cStatusChance;
+        }
+
+        public bool isDead(Character self)
+        {
+            return self.hp < 1;
+        }
+
+        public void attack(Character self, Character target)
+        {
+            //Game killingPro = new bool;
+            if (self.name == "Jack")// && killingPro == true)
+            {
+                target.hp -= self.atk + 1;
+            }
+            else
+            {
+                target.hp -= self.atk;
+            }
+            if (target.hp < 0)
+            {
+                target.hp = 0;
+            }
+        }
+    }
+
+    class Game
+    {
+        //global variables
+        static public int monstersAloud = 4;
+        static public int requiredLevels = 1;
+        static public List<string> roomsF = new List<string>();
+        static public int currentLevel = 1;
+        static public int runValue;
+        static public int coins = 0;
+        static public bool firstTalkBs = false;
+        static public bool killingPro = false;
+        static public int sharplevel = 0;
+        static public int timesPlayed = 0;
+        static public string command;
+        //static public List<string> lines = new List<string>(System.IO.File.ReadAllLines(@"C:\User Program Files\DFSAMk2\saveFile.txt"));
+        //static public List<string> featuresLines = new List<string>(System.IO.File.ReadAllLines(@"C:\User Program Files\DFSAMk2\roomFeatures.txt"));
+        static public int size = 6;
+        static public char[,] gameBoard = new char[size, size];
+        static public int[,] roomValues = new int[size, size];
+        static public char[,] gameBoardPath = new char[size, size];
+        static public int playerY;
+        static public int playerX;
+        static public int[] startCords = new int[2];
+        static public int[] endCords = new int[2];
+        static public string directionMoved;
+        static public bool newRoom = false;
+        static public int numbWalls;
+        static public int idealWalls;
+        static public int wallsToPlace;
+        static public bool portalRoom = false;
+        static public bool portalRoomFound = false;
+        static public bool gameOver = false;
+        static public Character player = new Character("Jack", 10, 10, 4, 6, "slashing", 20);
+        static public Character slime = new Character("Slime", 10, 10, 2, 3, "none", 0);
+        static public Character crawler = new Character("Crawler", 6, 6, 3, 1, "infect", 12);
+        static public Character bomb = new Character("Bomb", 1, 1, 2, 4, "explode", 35);
+        static public Weapon smallDagger = new Weapon("Small Dagger", 3, 2);
+        static public Weapon rustyShortSword = new Weapon("Rusty Shortsword", 4, 5);
+        static public Weapon silverDagger = new Weapon("Silver Dagger", 2, 15);
+        static public Weapon greatsword = new Weapon("Greatsword", 7, 7);
+        static public Weapon scimitar = new Weapon("Scimitar", 6, 12);
+        static public Weapon tigerBlades = new Weapon("Tiger Blades", 15, 20);
+        static public List<Character> possibleCharacters = new List<Character>() { player, slime, crawler, bomb };
+        static public bool roomCleared = false;
+        static public bool nextRoom = false;
+        static public Room r1 = new Room(1);
+        static public Room r2 = new Room(7);
+        static public Room r3 = new Room(13);
+        static public Room r4 = new Room(19);
+        static public Room r5 = new Room(25);
+        static public Room r6 = new Room(31);
+        static public Room r7 = new Room(37);
+        static public Room r8 = new Room(43);
+        static public Room r9 = new Room(49);
+        static public Room r10 = new Room(55);
+        static public Room r11 = new Room(61);
+        static public Room r12 = new Room(67);
+        static public Room r13 = new Room(73);
+        static public bool firstRoom = true;
+        static public List<string> roomFeatures = new List<string>();
+        static public List<string> result;
+        static public List<string> inventory;
+
+        static void Main()
+        {
+
+            StartPage();
+        }
+        static void StartPage()
+        {
+            string command;
+            // https://ascii.co.uk/art/tree
+            Console.WriteLine("");
+            Console.WriteLine("                                                   .               ");
+            Console.WriteLine("                                      .         ;                  ");
+            Console.WriteLine("         .              .              ;%     ;;                   ");
+            Console.WriteLine("           ,           ,                :;%  %;                    ");
+            Console.WriteLine("            :         ;                   :;%;'     .,             ");
+            Console.WriteLine("   ,.        %;     %;            ;        %;'    ,;               ");
+            Console.WriteLine("     ;       ;%;  %%;        ,     %;    ;%;    ,%'                ");
+            Console.WriteLine("      %;       %;%;      ,  ;       %;  ;%;   ,%;'                 ");
+            Console.WriteLine("       ;%;      %;        ;%;        % ;%;  ,%;'                   ");
+            Console.WriteLine("        `%;.     ;%;     %;'         `;%%;.%;'                     ");
+            Console.WriteLine("         `:;%.    ;%%. %X;        %; ;X%;%'                        ");
+            Console.WriteLine("            `:%;.  :;bd%;          %;X%;'           _____                         ");
+            Console.WriteLine("              `X%:.  :;%.         ;XX%;'           ||  _ |_ _ ___ ___ ___ ___ ___ ");
+            Console.WriteLine("                `X%.  `;X%.      ;XX%;             || |_|| | |   | . | -_| . |   |");
+            Console.WriteLine("                  `X%%. `X%%    ;XX%;              ||___/|___|_|_|_  |___|___|_|_|");
+            Console.WriteLine("                    ;X%. :X%%  %XX%;                             |___|            ");
+            Console.WriteLine("                      %Xbd%%%bd%%:;                     PRESS ENTER TO START...   ");
+            Console.WriteLine("                        #X%%%%%:;;                                 ");
+            Console.WriteLine("                        %XO%%%::;                                  ");
+            Console.WriteLine("                        %XXX%(o);  . '                             ");
+            Console.WriteLine("                        %XXXo%;:(.,'                               ");
+            Console.WriteLine("                    `.. %XXXo%::;                                  ");
+            Console.WriteLine("                       `)XXXo%::;                                  ");
+            Console.WriteLine("                        %XX(o)::;                                  ");
+            Console.WriteLine("                       .%XXXX%::;                                  ");
+            Console.WriteLine("                       ;%XXXX%::;.                                 ");
+            Console.WriteLine("                      ;%XXXX%%:;;;.                                ");
+            Console.WriteLine("                  ...;%XXXXX%%:;;;;,..                             ");
+            Console.ReadLine();
+            NewPage();
+            if (timesPlayed < 1)
+            {
+                bool valid = false;
+                while (!valid)
+                {
+                    Console.WriteLine("|New Game(1)|Stats(2)|Settings(3)|");
+                    command = Console.ReadLine();
+                    if (command == "1")
+                    {
+                        NewGame();
+                        valid = true;
+                    }
+                    else if (command == "2")
+                    {
+                        Stats();
+                        valid = true;
+                    }
+                    else if (command == "3")
+                    {
+                        Settings();
+                        valid = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine("That is an invalid command. Please enter a valid command.");
+                    }
+                }
+            }
+            else
+            {
+                /*
+                // loads variables
+                coins = Convert.ToInt32(lines[1]);
+                firstTalkBs = Convert.ToBoolean(lines[2]);
+                killingPro = Convert.ToBoolean(lines[3]);
+                sharplevel = Convert.ToInt32(lines[4]);
+                timesPlayed = Convert.ToInt32(lines[5]);
+                */
+                Console.WriteLine("|Load(1)||New Game(2)||Stats(3)||Settings(4)|");
+                bool valid = false;
+                while (!valid)
+                {
+                    command = Console.ReadLine();
+                    if (command == "1")
+                    {
+                        LoadGame();
+                        valid = true;
+                    }
+                    else if (command == "2")
+                    {
+                        NewGame();
+                        valid = true;
+                    }
+                    else if (command == "3")
+                    {
+                        Stats();
+                        valid = true;
+                    }
+                    else if (command == "4")
+                    {
+                        Settings();
+                        valid = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine("That is an invalid command. Please enter a valid command.");
+                    }
+                }
+            }
+        }
+        static void NewGame()
+        {
+            //TODO: print story, begin game with slime instead of guide
+            if (timesPlayed > 0)
+            {
+                //ClearSave();
+                timesPlayed = 0;
+            }
+            Console.Write("Skip Dialouge? y/n ");
+            if (Console.ReadLine() != "y")
+            {
+                StoryStart();
+                NewPage();
+            }
+            MainGameLoop();
+        }
+        static void LoadGame()
+        {
+            Hub();
+        }
+        static void Settings()
+        {
+            bool valid = false;
+            while (!valid)
+            {
+                Console.WriteLine("|Back(1)||Restart(2)||Change Difficulty(3)|");
+                string val = Console.ReadLine();
+                if (val == "1")
+                {
+                    valid = true;
+                    StartPage();
+                }
+                else if (val == "2")
+                {
+                    valid = true;
+                    //ClearSave();
+                }
+                else if (val == "3")
+                {
+                    valid = true;
+                    Console.WriteLine("The difficulty has been changed.");
+                    if (monstersAloud == 4)
+                    {
+                        monstersAloud = 6;
+                    }
+                    else
+                    {
+                        monstersAloud = 4;
+                    }
+                }
+            }
+        }
+        static void Stats()
+        {
+            Console.WriteLine("Stats:");
+            Console.WriteLine($"Coins: {coins}");
+            Console.WriteLine($"Sharpness Level: {sharplevel}");
+            Console.WriteLine($"Times Dived: {timesPlayed}");
+            bool valid = false;
+            while (!valid)
+            {
+                Console.WriteLine("|Back(1)|");
+                string val = Console.ReadLine();
+                if (val == "1")
+                {
+                    valid = true;
+                    StartPage();
+                }
+            }
+        }
+        /*
+        static void ClearSave()
+        {
+            string line = null;
+            int amountLines = lines.Count;
+            Console.WriteLine("Doing this will clear all of your save data. Do you wish to proceed? Y/N");
+            string command = Console.ReadLine();
+            if (command == "y")
+            {
+                using (StreamWriter writer = new StreamWriter(@"C:\User Program Files\DFSAMk2\saveFile.txt", true))
+                {
+                    for (int i = 0; i < amountLines; i++)
+                    {
+                        writer.Write(line);
+                    }
+                    writer.WriteLine("newGame");
+                    writer.Close();
+                }
+            }
+        }
+        */
+        static void MainGameLoop()
+        {
+            portalRoomFound = false;
+            InitialiseArray();
+            GenerateUnblockedPath();
+            NumOfWalls();
+            GenerateWalls();
+            DrawBoard();
+            while (gameOver == false)
+            {
+                FinalRoomFeatures();
+                if (newRoom == true)
+                {
+                    NumOfWalls();
+                    GenerateWalls();
+                }
+                NewPage();
+                DrawBoard();
+                if (playerY == endCords[1] && playerX == endCords[0])
+                {
+                    PortalRoomPrompt();
+                }
+            }
+            GameOverScreen();
+        }
+        static void StoryStart()
+        {
+            Console.Write("You wake up on a cold stone floor. You stand and look around you.");
+            Console.ReadLine();
+            Console.Write("You are in a sharp edged room surrounded by unfamiliar walls covered in ruins.");
+            Console.ReadLine();
+            Console.Write("You see a blob of green mass and walk towards it.");
+            Console.ReadLine();
+            Console.Write("It notices you.");
+            Console.ReadLine();
+            Console.Write("-: Hello Mr.... *mumbles* (test subject what is it now? Ah 337!) Ah Jack. Hello Mr. Jack!");
+            Console.ReadLine();
+            Console.Write("-: You have been summoned to these ancient rune looking things by me the all powerful master slime... McSlime");
+            Console.ReadLine();
+            Console.Write("McSlime: Throughout these ruins are dangerous beasts and monsters of old used to test any challengers who wish to enter...");
+            Console.ReadLine();
+            Console.Write("McSlime: Or in your case... Exit");
+            Console.ReadLine();
+            Console.Write("McSlime: YES that's right you will be trapped here unless you find me something in these ruins that you can trade");
+            Console.ReadLine();
+            Console.Write("McSlime: And I'm telling you now there is only one thing i want... A blue gem hidden here");
+            Console.ReadLine();
+            Console.Write("McSlime: I KNOW IT IS I can feel it... It calls to me");
+            Console.ReadLine();
+            Console.Write("McSlime: But I'm... IM TO STRONG TO FACE THESE BEASTS");
+            Console.ReadLine();
+            Console.Write("McSlime: They would but pollute my clear body that would.... Instantly absorb them... Banishing them from this mortal realm!");
+            Console.ReadLine();
+            Console.Write("McSlime: Yes yes... You will climb through the levels of this here ruin and get me what I want or you shan't leave!");
+            Console.ReadLine();
+            Console.Write("McSlime: You may even find some old rusty artefacts that will help you along your not so noble quest");
+            Console.ReadLine();
+            Console.Write("McSlime: Ive seen some chests around but you know if i tried to open the they would... Instantly evaporate.");
+            Console.ReadLine();
+            Console.Write("McSlime: Yea ill leave them for you.");
+            Console.ReadLine();
+            Console.Write("McSlime: Ill follow you as much as i can. Perhaps imbuing some of my vast knowledge upon you.");
+            Console.ReadLine();
+        }
+        static void InitialiseArray()
+        {
+            Random rand = new Random();
+            //initialise array
+            for (int i = 0; i < size; i++)
+            {
+                for (int j = 0; j < size; j++)
+                {
+                    gameBoard[j, i] = 'o';
+                    roomValues[j, i] = rand.Next(1, 101);
+                }
+            }
+            //assign room features in txt doc
+            int counter = 0;
+            for (int i = 0; i < size; i++)
+            {
+                for (int j = 0; j < size; j++)
+                {
+                    int percentage = roomValues[i, j];
+                    if (percentage > 94) { roomFeatures.Add("chest button altar"); }
+                    else if (percentage > 90) { roomFeatures.Add("chest button guide"); }
+                    else if (percentage > 85) { roomFeatures.Add("chest altar"); }
+                    else if (percentage > 79) { roomFeatures.Add("chest guide"); }
+                    else if (percentage > 74) { roomFeatures.Add("button altar"); }
+                    else if (percentage > 64) { roomFeatures.Add("button guide"); }
+                    else if (percentage > 54) { roomFeatures.Add("button chest"); }
+                    else if (percentage > 50) { roomFeatures.Add("guide"); }
+                    else if (percentage > 47) { roomFeatures.Add("altar"); }
+                    else if (percentage > 44) { roomFeatures.Add("chest"); }
+                    else if (percentage > 39) { roomFeatures.Add("button"); }
+                    else if (percentage > 0) { roomFeatures.Add("empty"); }
+                    else { roomFeatures.Add("teleporter"); }
+                    counter += 1;
+                }
+            }
+            //place player on random cord
+            playerY = rand.Next(0, size - 1);
+            playerX = rand.Next(0, size - 1);
+            gameBoard[playerX, playerY] = '1';
+            //set up the true path
+            startCords[0] = playerX;
+            startCords[1] = playerY;
+            endCords[0] = rand.Next(0, size - 1);
+            endCords[1] = rand.Next(0, size - 1);
+            //ensure true path cords arent the same
+            while (endCords[0] == startCords[0] && endCords[1] == startCords[1])
+            {
+                endCords[0] = rand.Next(0, size - 1);
+                endCords[1] = rand.Next(0, size - 1);
+            }
+            //set portal rooms room value to void
+            roomValues[endCords[0], endCords[1]] = '-';
+        }
+        static void DrawBoard()
+        {
+            if (portalRoomFound == true)
+            {
+                gameBoard[endCords[0], endCords[1]] = 'e';
+            }
+
+            gameBoard[playerX, playerY] = '3';
+            for (int i = 0; i < size; i++)
+            {
+                for (int j = 0; j < size; j++)
+                {
+                    //'o' is an undiscovered tile
+                    //'1' is a discovered room
+                    //'2' is a wall
+                    //'3' is the player
+                    //'4' is the undiscovered unblocked path
+                    //'5' is the discovered unblocked path
+                    Console.Write($"{gameBoard[j, i]} ");
+                }
+                Console.WriteLine();
+            }
+        }
+        static void NumOfWalls()
+        {
+            //checks how many walls are around the player
+            numbWalls = 0;
+            if (playerY - 1 < 0 || IsWallUp())
+            {
+                numbWalls += 1;
+            }
+            if (playerY + 1 > size || IsWallDown())
+            {
+                numbWalls += 1;
+            }
+            if (playerX - 1 < 0 || IsWallLeft())
+            {
+                numbWalls += 1;
+            }
+            if (playerX + 1 > size || IsWallRight())
+            {
+                numbWalls += 1;
+            }
+        }
+        static void PlayerMove()
+        {
+            Random rand = new Random();
+            if (directionMoved == "up")
+            {
+                if (!IsWallUp() && playerY - 1 >= 0)
+                {
+                    playerY -= 1;
+                    if (gameBoard[playerX, playerY] == '1' || gameBoard[playerX, playerY] == '3')
+                    {
+                        newRoom = false;
+                        gameBoard[playerX, playerY + 1] = '1';
+                    }
+                    else
+                    {
+                        newRoom = true;
+                        gameBoard[playerX, playerY + 1] = '1';
+                    }
+                }
+            }
+            else if (directionMoved == "down")
+            {
+                if (!IsWallDown() && playerY + 1 < size)
+                {
+                    playerY += 1;
+                    if (gameBoard[playerX, playerY] == '1' || gameBoard[playerX, playerY] == '3')
+                    {
+                        newRoom = false;
+                        gameBoard[playerX, playerY - 1] = '1';
+                    }
+                    else
+                    {
+                        newRoom = true;
+                        gameBoard[playerX, playerY - 1] = '1';
+                    }
+                }
+            }
+            else if (directionMoved == "left")
+            {
+                if (!IsWallLeft() && playerX - 1 >= 0)
+                {
+                    playerX -= 1;
+                    if (gameBoard[playerX, playerY] == '1' || gameBoard[playerX, playerY] == '3')
+                    {
+                        newRoom = false;
+                        gameBoard[playerX + 1, playerY] = '1';
+                    }
+                    else
+                    {
+                        newRoom = true;
+                        gameBoard[playerX + 1, playerY] = '1';
+                    }
+                }
+            }
+            else if (directionMoved == "right")
+            {
+                if (!IsWallRight() && playerX + 1 < size)
+                {
+                    playerX += 1;
+                    if (gameBoard[playerX, playerY] == '1' || gameBoard[playerX, playerY] == '3')
+                    {
+                        newRoom = false;
+                        gameBoard[playerX - 1, playerY] = '1';
+                    }
+                    else
+                    {
+                        newRoom = true;
+                        gameBoard[playerX - 1, playerY] = '1';
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine("Invalid direction.");
+            }
+            CheckRoom();
+        }
+        static void GenerateWalls()
+        {
+            Random rand = new Random();
+            //generate walls
+            int directionToPlace;
+            bool cantBeUp = false;
+            bool cantBeDown = false;
+            bool cantBeLeft = false;
+            bool cantBeRight = false;
+            idealWalls = rand.Next(1, 3);
+            wallsToPlace = idealWalls - numbWalls;
+            while (wallsToPlace > 0)
+            {
+                directionToPlace = rand.Next(1, 5);
+                if (directionToPlace == 1 && !IsWallUp() && playerY - 1 >= 0)
+                {
+                    if (gameBoard[playerX, playerY - 1] != '1' && gameBoardPath[playerX, playerY - 1] != '4')
+                    {
+                        gameBoard[playerX, playerY - 1] = '2';
+                        wallsToPlace -= 1;
+                    }
+                    else
+                    {
+                        cantBeUp = true;
+                    }
+                }
+                else
+                {
+                    cantBeUp = true;
+                }
+                if (directionToPlace == 2 && !IsWallDown() && playerY + 1 < size)
+                {
+                    if (gameBoard[playerX, playerY + 1] != '1' && gameBoardPath[playerX, playerY + 1] != '4')
+                    {
+                        gameBoard[playerX, playerY + 1] = '2';
+                        wallsToPlace -= 1;
+                    }
+                    else
+                    {
+                        cantBeDown = true;
+                    }
+                }
+                else
+                {
+                    cantBeDown = true;
+                }
+                if (directionToPlace == 3 && !IsWallLeft() && playerX - 1 >= 0)
+                {
+                    if (gameBoard[playerX - 1, playerY] != '1' && gameBoardPath[playerX - 1, playerY] != '4')
+                    {
+                        gameBoard[playerX - 1, playerY] = '2';
+                        wallsToPlace -= 1;
+                    }
+                    else
+                    {
+                        cantBeLeft = true;
+                    }
+                }
+                else
+                {
+                    cantBeLeft = true;
+                }
+                if (directionToPlace == 4 && !IsWallRight() && playerX + 1 < size)
+                {
+                    if (gameBoard[playerX + 1, playerY] != '1' && gameBoardPath[playerX + 1, playerY] != '4')
+                    {
+                        gameBoard[playerX + 1, playerY] = '2';
+                        wallsToPlace -= 1;
+                    }
+                    else
+                    {
+                        cantBeRight = true;
+                    }
+                }
+                else
+                {
+                    cantBeRight = true;
+                }
+                if (cantBeDown && cantBeLeft && cantBeRight && cantBeUp)
+                {
+                    wallsToPlace = 0;
+                }
+            }
+        }
+        static void GenerateUnblockedPath()
+        {
+            //finding the greater value on horizontal plane
+            if (startCords[0] > endCords[0])
+            {
+                int dummyVal = startCords[0];
+                for (int i = 0; i < 1 + startCords[0] - endCords[0]; i++)
+                {
+                    gameBoardPath[dummyVal, startCords[1]] = '4';
+                    dummyVal -= 1;
+                }
+                //find the greater value on vertical plane
+                if (startCords[1] > endCords[1])
+                {
+                    int dumVal = endCords[1];
+                    for (int i = 0; i < 1 + startCords[1] - endCords[1]; i++)
+                    {
+                        gameBoardPath[endCords[0], dumVal] = '4';
+                        dumVal += 1;
+                    }
+                }
+                else if (endCords[1] > startCords[1])
+                {
+                    int dumVal = endCords[1];
+                    for (int i = 0; i < 1 + endCords[1] - startCords[1]; i++)
+                    {
+                        gameBoardPath[endCords[0], dumVal] = '4';
+                        dumVal -= 1;
+                    }
+                }
+            }
+
+            else if (endCords[0] > startCords[0])
+            {
+                int dummyVal = endCords[0];
+                for (int i = 0; i < 1 + endCords[0] - startCords[0]; i++)
+                {
+                    gameBoardPath[dummyVal, endCords[1]] = '4';
+                    dummyVal -= 1;
+                }
+                //find the greater value on vertical plane
+                if (startCords[1] > endCords[1])
+                {
+                    int dumVal = startCords[1];
+                    for (int i = 0; i < 1 + startCords[1] - endCords[1]; i++)
+                    {
+                        gameBoardPath[startCords[0], dumVal] = '4';
+                        dumVal -= 1;
+                    }
+                }
+                else if (endCords[1] > startCords[1])
+                {
+                    int dumVal = startCords[1];
+                    for (int i = 0; i < 1 + endCords[1] - startCords[1]; i++)
+                    {
+                        gameBoardPath[startCords[0], dumVal] = '4';
+                        dumVal += 1;
+                    }
+                }
+            }
+            else
+            {
+                if (startCords[1] > endCords[1])
+                {
+                    int dumVal = startCords[1];
+                    for (int i = 0; i < 1 + startCords[1] - endCords[1]; i++)
+                    {
+                        gameBoardPath[startCords[0], dumVal] = '4';
+                        dumVal -= 1;
+                    }
+                }
+                else if (endCords[1] > startCords[1])
+                {
+                    int dumVal = startCords[1];
+                    for (int i = 0; i < 1 + endCords[1] - startCords[1]; i++)
+                    {
+                        gameBoardPath[startCords[0], dumVal] = '4';
+                        dumVal += 1;
+                    }
+                }
+            }
+            gameBoardPath[startCords[0], startCords[1]] = 's';
+            gameBoardPath[endCords[0], endCords[1]] = 'e';
+        }
+        static void PortalRoomPrompt()
+        {
+            portalRoomFound = true;
+            if (currentLevel == requiredLevels)
+            {
+                if (timesPlayed < 1)
+                {
+                    Console.WriteLine("You enter a chamber unfarmiliar to you.\nThere is a small blue hovering above a pedistal in the center of the small room.\nMcSlime appears before you.");
+                    Console.WriteLine("McSlime: Good. I see youve found it...");
+                    Console.Read();
+                    Console.WriteLine("McSlime: Thank you, but you wont be going home.");
+                    Console.Read();
+                    Console.WriteLine("McSlime lunges at you....");
+                    Console.Read();
+                    Console.WriteLine("He splats onto your foot.");
+                    Console.Read();
+                    Console.WriteLine("You expect the worst as ye sits there.");
+                    Console.Read();
+                    Console.WriteLine("McSlime: Woops... um yeh I forgot that everything i said was a lie...");
+                    Console.Read();
+                    Console.WriteLine("He wheels off your foot and lunges for the gem in the center of the room.");
+                    Console.Read();
+                    Console.WriteLine("McSlime: ITS MINE!");
+                    Console.Read();
+                    Console.WriteLine("He disappears into the gem....");
+                    Console.ReadLine();
+                    Console.ReadLine();
+                    Console.WriteLine("...");
+                    Console.WriteLine("Lights flair out of the gem...");
+                    Console.Read();
+                    Console.WriteLine("You see the silloute of a man...");
+                    Console.Read();
+                    Console.WriteLine("With a feather in his hair...");
+                    Console.Read();
+                    Console.WriteLine("-: Sorry about him... He thinks he was so cunning trapping my tribe in there years ago.");
+                    Console.Read();
+                    Console.WriteLine("The man laughs.");
+                    Console.Read();
+                    Console.WriteLine("-: Come. Touch the gem.");
+                    Console.Read();
+                    Console.WriteLine("-: Dont worry. It is safe.");
+                    Console.Read();
+                    Console.WriteLine("-: The only reason he was sucked into the gem is that, I have been chanting a spell for the last 3 years to redirect the path of teleportation the gem has.");
+                    Console.Read();
+                    Console.WriteLine("-: He is now in 'the dark room' or so we called it in older times.");
+                    Console.Read();
+                    Console.WriteLine("-: It is an inexcapable room of pure darkness that changes its size with its contents.");
+                    Console.Read();
+                    Console.WriteLine("You walk over to the man hestitantly as he grabs your hand.");
+                    Console.Read();
+                    Console.WriteLine("He presses it against the gem. It desolves into small golden droplets as you plunge into darkness.");
+                    Console.Read();
+                    coins += 10;
+                    coins += runValue;
+                    timesPlayed += 1;
+                    Hub();
+                }
+                Console.WriteLine("You enter the gem chamber.\nYou walk over to the gem.\nYou grab the gem putting it into your chest like you have so many times before.");
+                coins += 5;
+                coins += runValue;
+                Hub();
+            }
+            else
+            {
+                Console.WriteLine("You have entered the portal room.");
+                Console.WriteLine("Would you like to asend? ");
+                string asend = Console.ReadLine();
+                if (asend == "yes")
+                {
+                    gameOver = true;
+                }
+            }
+        }
+        static void GameOverScreen()
+        {
+            Console.WriteLine("Game Over!");
+            Console.Read();
+            if (timesPlayed > 0)
+            {
+                Console.WriteLine("You crawl back to The Cell.");
+                player.hp = player.maxHp;
+                gameOver = false;
+                Hub();
+            }
+            else
+            {
+                Console.WriteLine("You wake up in the cell with McSlime, who prompts you to restart.");
+                player.hp = player.maxHp;
+                gameOver = false;
+                MainGameLoop();
+            }
+        }
+        static void Hub()
+        {
+            //intro to hub
+            if (timesPlayed < 1)
+            {
+                Console.WriteLine("You appear in a large bustling room full of lights hanging from all walls");
+                Console.Read();
+                Console.WriteLine("The man appears next to you.");
+                Console.Read();
+                Console.WriteLine("-: Im sorry i hadnt intoduced myself earlier...");
+                Console.Read();
+                Console.WriteLine("-: I wanted to ensure my tribe was safe first.");
+                Console.Read();
+                Console.WriteLine("He leads you through the market like hall and up some stairs into a small room.");
+                Console.Read();
+                Console.WriteLine("An old man weiring an eagle feather in his hair is sitting at a table expecting you.");
+                Console.Read();
+                Console.WriteLine("You look again at the man, who came from the gems, feather.");
+                Console.Read();
+                Console.WriteLine("It is a falcons feather.");
+                Console.Read();
+                Console.WriteLine("He look at you noticing your gaze.");
+                Console.Read();
+                Console.WriteLine("Falcon: I am Falcon, sharman of the Tezrik tribe, this here is Eagle our elder and leader.");
+                Console.Read();
+                Console.WriteLine("Eagle gives you a slow not gesturing you to sit opposite him.");
+                Console.Read();
+                Console.WriteLine("You obey, sitting on a wooden chair opposite him as Falcon stands beside you. He looks up at Falcon.");
+                Console.Read();
+                Console.WriteLine("Eagle: Thank you Falcon for protecting us in the dark room.");
+                Console.Read();
+                Console.WriteLine("He returns his gaze to you.");
+                Console.Read();
+                Console.WriteLine("Eagle: And thank you decendent of Hawk, for releasing us.");
+                Console.Read();
+                Console.WriteLine("You look at him quizicly.");
+                Console.Read();
+                Console.WriteLine("Eagle: Hawk was your father and my brother. He moved to the surface to find love.");
+                Console.Read();
+                Console.WriteLine("Falcon leaves you at a nod from Eagle and you talk with your new found Uncle for hours, he tells you about the tribe and the ruins, and you catch him up on what happened to your father.");
+                Console.Read();
+                Console.WriteLine("He then takes you around what the tribe calls The Cell, introducing you to the whole tribe and the location of places like the Blacksmith and a pinboard that shows you requests and your, among others, stats and ranks.");
+                Console.Read();
+                Console.WriteLine("You decide that you will stay in the ruins, to complete ruin runs as they call the trial turned compotition.");
+                Console.Read();
+                Console.WriteLine("He bids his fairwells as he leaves you were you were standing when you first appeared in The Cell.");
+                Console.Read();
+                NewPage();
+            }
+            else
+            {
+                Console.WriteLine("You appear in The Cell fealing accomplished.");
+            }
+            Console.WriteLine("|Blacksmith||Guide||Stats||Ruins|");
+            bool valid = false;
+            while (!valid)
+            {
+                command = Console.ReadLine();
+                if (command == "blacksmith")
+                {
+                    Blacksmith();
+                    valid = true;
+                }
+                else if (command == "guide")
+                {
+                    Guide();
+                    valid = true;
+                }
+                else if (command == "stats")
+                {
+                    Stats();
+                    valid = true;
+                }
+                else if (command == "ruins")
+                {
+                    Console.WriteLine("Falcon: How many floors would you like set up?");
+                    requiredLevels = Convert.ToInt32(Console.ReadLine());
+                    MainGameLoop();
+                    valid = true;
+                }
+                else
+                {
+                    Console.WriteLine("That is an invalid command. Please enter a valid command.");
+                }
+            }
+        }
+        /*
+        static void Save()
+        {
+            using (StreamWriter writer = new StreamWriter(@"C:\User Program Files\DFSAMk2\saveFile.txt"))
+            {
+                writer.WriteLine(coins);
+                writer.WriteLine(firstTalkBs);
+                writer.WriteLine(killingPro);
+                writer.WriteLine(sharplevel);
+                writer.WriteLine(timesPlayed);
+            }
+        }
+        */
+        static void Blacksmith()
+        {
+            Console.WriteLine("Ahhh, Jack, my boy! Still alive I see!\nThats good! Yes!\nWhat can i do for you?\n|Sharpen||Talk||Leave|");
+            bool valid = false;
+            while (!valid)
+            {
+                command = Console.ReadLine();
+                if (command == "sharpen")
+                {
+                    Sharpen();
+                    valid = true;
+                }
+                else if (command == "talk")
+                {
+                    BlacksmithTalk();
+                    valid = true;
+                }
+                else if (command == "leave")
+                {
+                    Console.WriteLine("Stay safe my boy!");
+                    Hub();
+                    valid = true;
+                }
+                else
+                {
+                    Console.WriteLine("That is an invalid command. Please enter a valid command.");
+                }
+            }
+        }
+        static void Sharpen()
+        {
+            if (coins >= 10 * sharplevel + 5)
+            {
+                coins -= (10 * sharplevel + 5);
+                sharplevel += 1;
+                player.atk += sharplevel;
+                Console.WriteLine("You hand your blade to the smith, who begins to peddle his great wheel, picking up speed before placing your blade on it.\nYou hear the scraping of metal agains the large stone wheel.\nSparks fly, expertly managed, away from you and adding to the spike on the wall.\nThe smith hand you back you blade warning you to stay safe.");
+            }
+            else
+            {
+                Console.WriteLine("As much as i would love to aid you in slaughtering mindless beasts, i do have to have coin to mold into the blade so the edge keeps.");
+                Console.WriteLine("You say you fairwells to the smith and return to the main chamber of The Cell.");
+                Hub();
+            }
+        }
+        static void BlacksmithTalk()
+        {
+            if (firstTalkBs)
+            {
+                Console.WriteLine("Time passes as you get into a deep convisation with the smith on how to best slaughter the beasts of the ruin.\nYou gained a proficiency in killing.");
+                firstTalkBs = false;
+                killingPro = true;
+            }
+            else
+            {
+                Console.WriteLine("You sit down next to the smith.\nTime flys by, along with customers, as you chat aimlessly with the smith as if you had know him your whole life.\nYou stand and return to The Cell as the ruins of the chamber begin to glow.");
+                Hub();
+            }
+        }
+        static void Battle()
+        {
+            // use https://www.w3schools.com/cs/cs_properties.php
+            Random rand = new Random();
+            List<Character> fighters = new List<Character>() { player };
+            int turnCount = -1;
+            bool fighting = true;
+            int numOfMonsters = rand.Next(1, monstersAloud);
+            bool isDodgeing = false;
+
+            Console.WriteLine();
+
+            for (int i = 0; numOfMonsters > i; i++)
+            {
+                int monster = rand.Next(1, possibleCharacters.Count);
+                if (i == 0)
+                {
+                    Character monster1 = new Character(possibleCharacters[monster].name, possibleCharacters[monster].hp, possibleCharacters[monster].maxHp, possibleCharacters[monster].atk, possibleCharacters[monster].speed, possibleCharacters[monster].statusEffect, possibleCharacters[monster].statusChance);
+                    fighters.Add(monster1);
+                }
+                else if (i == 1)
+                {
+                    Character monster2 = new Character(possibleCharacters[monster].name, possibleCharacters[monster].hp, possibleCharacters[monster].maxHp, possibleCharacters[monster].atk, possibleCharacters[monster].speed, possibleCharacters[monster].statusEffect, possibleCharacters[monster].statusChance);
+                    fighters.Add(monster2);
+                }
+                else if (i == 2)
+                {
+                    Character monster3 = new Character(possibleCharacters[monster].name, possibleCharacters[monster].hp, possibleCharacters[monster].maxHp, possibleCharacters[monster].atk, possibleCharacters[monster].speed, possibleCharacters[monster].statusEffect, possibleCharacters[monster].statusChance);
+                    fighters.Add(monster3);
+                }
+                else if (i == 3)
+                {
+                    Character monster4 = new Character(possibleCharacters[monster].name, possibleCharacters[monster].hp, possibleCharacters[monster].maxHp, possibleCharacters[monster].atk, possibleCharacters[monster].speed, possibleCharacters[monster].statusEffect, possibleCharacters[monster].statusChance);
+                    fighters.Add(monster4);
+                }
+            }
+            Console.Write("There is: ");
+            for (int i = 1; i < fighters.Count; i++)
+            {
+                Console.Write($"a {fighters[i].name} ");
+            }
+            Console.WriteLine();
+            while (fighting)
+            {
+                turnCount += 1;
+                int fighter = turnCount % fighters.Count;
+                int target = (turnCount + 1) % fighters.Count;
+
+                if (fighters[fighter].name == "Jack")
+                {
+                    Console.WriteLine("You see an opening...");
+                    Console.WriteLine("|Attack||Dodge||Heal|");
+                    command = Console.ReadLine();
+                    if (command == "attack")
+                    {
+                        fighters[fighter].attack(fighters[fighter], fighters[target]);
+                        Console.WriteLine($"{fighters[fighter].name} is attacking {fighters[target].name} leaving them at {fighters[target].hp} health.");
+                    }
+                    else if (command == "dodge")
+                    {
+                        isDodgeing = true;
+                    }
+                    else if (command == "heal")
+                    {
+                        //take potion from invintory
+                        player.hp += 3;
+                        if (player.maxHp < player.hp)
+                        {
+                            player.hp = player.maxHp;
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("You fumble about unsure what to do... ");
+                    }
+                }
+                else
+                {
+                    if (isDodgeing == true)
+                    {
+                        Console.WriteLine($"{fighters[fighter].name} tried to attack {player.name}, but failed. You recover your breath healing 1.");
+                        player.hp += 1;
+                        if (player.maxHp < player.hp)
+                        {
+                            player.hp = player.maxHp;
+                        }
+                    }
+                    else
+                    {
+                        fighters[fighter].attack(fighters[fighter], player);
+                        Console.WriteLine($"{fighters[fighter].name} is attacking {player.name} leaving them at {player.hp} health.");
+                    }
+                }
+                //death checker
+                for (int i = 0; i < fighters.Count; i++)
+                {
+                    if (fighters[target].isDead(fighters[target]))
+                    {
+                        Console.WriteLine($"{fighters[target].name} is dead.");
+                        if (fighters[target].name == "Jack")
+                        {
+                            Console.WriteLine("You fall to your back as the creatures of the ruin eat you.");
+                            fighting = false;
+                            gameOver = true;
+                            GameOverScreen();
+                        }
+                        fighters.RemoveAt(target);
+                        if (fighters.Contains(player) && fighters.Count == 1)
+                        {
+                            fighting = false;
+                        }
+                    }
+                }
+            }
+            roomCleared = true;
+        }
+        static void PrintRoomUI()
+        {
+            List<Room> rooms = new List<Room>();
+
+            for (int i = 0; i < size; i++)
+            {
+                for (int j = 0; j < size; j++)
+                {
+                    int percentage = roomValues[i, j];
+                    if (percentage > 94 && gameBoard[i, j] != 'o') { rooms.Add(r12); }
+                    else if (percentage > 90 && gameBoard[i, j] != 'o') { rooms.Add(r11); }
+                    else if (percentage > 85 && gameBoard[i, j] != 'o') { rooms.Add(r10); }
+                    else if (percentage > 79 && gameBoard[i, j] != 'o') { rooms.Add(r9); }
+                    else if (percentage > 74 && gameBoard[i, j] != 'o') { rooms.Add(r8); }
+                    else if (percentage > 64 && gameBoard[i, j] != 'o') { rooms.Add(r7); }
+                    else if (percentage > 54 && gameBoard[i, j] != 'o') { rooms.Add(r6); }
+                    else if (percentage > 50 && gameBoard[i, j] != 'o') { rooms.Add(r5); }
+                    else if (percentage > 47 && gameBoard[i, j] != 'o') { rooms.Add(r4); }
+                    else if (percentage > 44 && gameBoard[i, j] != 'o') { rooms.Add(r3); }
+                    else if (percentage > 39 && gameBoard[i, j] != 'o') { rooms.Add(r2); }
+                    else if (percentage > 0 && gameBoard[i, j] != 'o') { rooms.Add(r1); }
+                    else { rooms.Add(r13); }
+                }
+            }
+            for (int i = 0; i < size * size; i++)
+            {
+                Console.WriteLine(rooms[i].line);
+            }
+            string[] lines = System.IO.File.ReadAllLines(@"C:\User Program Files\DFSAMk2\roomType.txt");
+            int turnCount = -1;
+            int amount = 2;
+
+            for (int h = 1; h < size + 1; h++)
+            {
+                for (int i = 0; i < 5; i++)
+                {
+                    for (int j = -1; j < size - 1; j++)
+                    {
+                        turnCount += 1;
+                        int fighter = turnCount % (amount + 1);
+                        int lineToPrint = rooms[fighter].line + i;
+                        Console.Write(lines[lineToPrint]);
+                    }
+                    Console.WriteLine();
+                }
+                for (int k = 0; k < 3; k++)
+                {
+                    rooms.Remove(rooms[0]);
+                }
+            }
+        }
+        static void FinalRoomFeatures()
+        {
+            int numberOfFeatures;
+            nextRoom = false;
+            roomCleared = true;
+            result = roomFeatures[playerX * size + playerY + 1].Split().ToList();
+            numberOfFeatures = result.Count;
+            for (int i = 0; i < numberOfFeatures; i++)
+            {
+                if (result[i] == "")
+                {
+                    result[i] = "empty";
+                }
+            }
+                if (result.Contains("guide"))
+            {
+                if (timesPlayed < 1)
+                {
+                    Console.WriteLine("McSlime is blobbed up in a corner almost as if he was waiting for you...");
+                }
+                else
+                {
+                    Console.WriteLine("Falcon is standing in a corner.");
+                }
+            }
+            if (result.Contains("altar"))
+            {
+                Console.WriteLine("A grand altar stands waiting in the center of the room.");
+            }
+            if (result.Contains("chest"))
+            {
+                Console.WriteLine("There is a chest hidden off in the corner of the room...");
+            }
+            if (result.Contains("button"))
+            {
+                Console.WriteLine("There is a singular button in the center of the room...\nYou hear a mechinism flair and the doors around the room lock...");
+                roomCleared = false;
+            }
+            if (result.Contains("empty"))
+            {
+                Console.WriteLine("The room is empty... \nHow strange...");
+            }
+            Console.Write("There seems to be doors");
+            if (!IsWallUp()) { Console.Write(" up"); }
+            if (!IsWallDown()) { Console.Write(" down"); }
+            if (!IsWallLeft()) { Console.Write(" left"); }
+            if (!IsWallRight()) { Console.Write(" right"); }
+            Console.WriteLine();
+            for (int i = 0; i < numberOfFeatures; i++)
+            {
+                Console.Write("| " + result[i] + " |");
+            }
+            Console.WriteLine();
+            while (nextRoom == false)
+            {
+                command = Console.ReadLine();
+                Interaction(command);
+            }
+        }
+        static void Interaction(string command)
+        {
+            if ((command == "up" && !IsWallUp()) || (command == "down" && !IsWallDown()) || (command == "left" && !IsWallLeft()) || (command == "right" && !IsWallRight()))
+            {
+                if (roomCleared == true)
+                {
+                    directionMoved = command;
+                    PlayerMove();
+                    nextRoom = true;
+                }
+                else
+                {
+                    Console.WriteLine("That door is locked... \nThere may be a mechinism to unlock it...");
+                    nextRoom = false;
+                }
+            }
+            else if (command == "up" || command == "down" || command == "left" || command == "right")
+            {
+                Console.WriteLine("Your face smashes into a solid stone wall.");
+            }
+            else if (command == "chest" && result.Contains("chest"))
+            {
+                Chest();
+                result.Remove("chest");
+                string newResult = string.Join(" ", result);
+                roomFeatures[playerX * size + playerY + 1] = newResult;
+            }
+
+            else if (command == "altar" && result.Contains("altar"))
+            {
+                Altar();
+                result.Remove("altar");
+                string newResult = string.Join(" ", result);
+                roomFeatures[playerX * size + playerY + 1] = newResult;
+            }
+            else if (command == "guide" && result.Contains("guide"))
+            {
+                Guide();
+                result.Remove("guide");
+            }
+            else if (command == "button" && result.Contains("button"))
+            {
+                Console.WriteLine("The button is stiff from old age but gives into you.");
+                Console.WriteLine("Trapdoors open in the ceiling releasing monsters down upon you.");
+                Battle();
+                result.Remove("button");
+                string newResult = string.Join(" ", result);
+                roomFeatures[playerX * size + playerY + 1] = newResult;
+                NewPage();
+                DrawBoard();
+                FinalRoomFeatures();
+            }
+            else
+            {
+                Console.WriteLine("Invalid command");
+                nextRoom = false;
+            }
+        }
+        static void Guide()
+        {
+
+        }
+        static void Altar()
+        {
+            Console.WriteLine("You stand before the great altar of the tribal god and bow.\nA drop of something falls onto your head healing you.");
+            player.hp = player.maxHp;
+        }
+        static void Chest()
+        {
+            Random rand = new Random();
+            int loot = rand.Next(1, 4);
+            bool validChestCommand = false;
+
+            if (loot == 1)
+            {
+                int lootRoll = rand.Next(1, 101);
+                if (lootRoll > 92)
+                {
+                    Console.WriteLine($"You found {tigerBlades.name}. Would you like to sell them or equip them?");
+                    while (validChestCommand == false)
+                    {
+                        string action = Console.ReadLine();
+                        if (action == "sell")
+                        {
+                            runValue += tigerBlades.value;
+                            validChestCommand = true;
+                        }
+                        else if (action == "equip")
+                        {
+                            player.atk = tigerBlades.dmg;
+                            validChestCommand = true;
+                        }
+                    }
+                }
+                else if (lootRoll > 82)
+                {
+                    Console.WriteLine($"You found a {scimitar.name}. Would you like to sell it or equip it?");
+                    while (validChestCommand == false)
+                    {
+                        string action = Console.ReadLine();
+                        if (action == "sell")
+                        {
+                            runValue += scimitar.value;
+                            validChestCommand = true;
+                        }
+                        else if (action == "equip")
+                        {
+                            player.atk = scimitar.dmg;
+                            validChestCommand = true;
+                        }
+                    }
+                }
+                else if (lootRoll > 70)
+                {
+                    Console.WriteLine($"You found {greatsword.name}. Would you like to sell it or equip it?");
+                    while (validChestCommand == false)
+                    {
+                        string action = Console.ReadLine();
+                        if (action == "sell")
+                        {
+                            runValue += greatsword.value;
+                            validChestCommand = true;
+                        }
+                        else if (action == "equip")
+                        {
+                            player.atk = greatsword.dmg;
+                            validChestCommand = true;
+                        }
+                    }
+                }
+                else if (lootRoll > 45)
+                {
+                    Console.WriteLine($"You found {silverDagger.name}. Would you like to sell it or equip it?");
+                    while (validChestCommand == false)
+                    {
+                        string action = Console.ReadLine();
+                        if (action == "sell")
+                        {
+                            runValue += silverDagger.value;
+                            validChestCommand = true;
+                        }
+                        else if (action == "equip")
+                        {
+                            player.atk = silverDagger.dmg;
+                            validChestCommand = true;
+                        }
+                    }
+                }
+                else if (lootRoll > 29)
+                {
+                    Console.WriteLine($"You found {rustyShortSword.name}. Would you like to sell it or equip it?");
+                    while (validChestCommand == false)
+                    {
+                        string action = Console.ReadLine();
+                        if (action == "sell")
+                        {
+                            runValue += rustyShortSword.value;
+                            validChestCommand = true;
+                        }
+                        else if (action == "equip")
+                        {
+                            player.atk = rustyShortSword.dmg;
+                            validChestCommand = true;
+                        }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"You found {smallDagger.name}. Would you like to sell it or equip it?");
+                    while (validChestCommand == false)
+                    {
+                        string action = Console.ReadLine();
+                        if (action == "sell")
+                        {
+                            runValue += smallDagger.value;
+                            validChestCommand = true;
+                        }
+                        else if (action == "equip")
+                        {
+                            player.atk = smallDagger.dmg;
+                            validChestCommand = true;
+                        }
+                    }
+                }
+
+            }
+            else if (loot == 2)
+            {
+                int amountOfCoins = rand.Next(1, 7);
+                Console.WriteLine($"The chest contained {amountOfCoins} coins.");
+                coins += amountOfCoins;
+            }
+            else
+            {
+                Console.WriteLine("The chest contained a potion, which slips out of your hands smashing onto the floor.");
+            }
+        }
+        static void IsWon()
+        {
+
+        }
+        //check modules
+        static bool IsWallUp()
+        {
+            if (playerY - 1 >= 0)
+            {
+                if (gameBoard[playerX, playerY - 1] == '2')
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+        static bool IsWallDown()
+        {
+            if (playerY + 1 < size)
+            {
+                if (gameBoard[playerX, playerY + 1] == '2')
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+        static bool IsWallLeft()
+        {
+            if (playerX - 1 >= 0)
+            {
+                if (gameBoard[playerX - 1, playerY] == '2')
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+        static bool IsWallRight()
+        {
+            if (playerX + 1 < size)
+            {
+                if (gameBoard[playerX + 1, playerY] == '2')
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+        static void CheckRoom()
+        {
+            if (gameBoardPath[playerX, playerY] == 'e')
+            {
+                portalRoom = true;
+            }
+        }
+        static void NewPage()
+        {
+            for (int i = 0; i < 36; i++)
+            {
+                Console.WriteLine();
+            }
+        }
+
+    }
+}
